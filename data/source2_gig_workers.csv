@@ -1,4 +1,4 @@
-email_id,worker_name,rate,location,status,skill_tags,normalized_emails
+email_id,worker_name,rate,location,status,skill_tags,normalized_email
 varun.jain29@example.com,Varun Jain,1415/hr,Pune,Active,"n8n, web scraping, fastapi, mysql, pandas, mongodb",varun.jain29@example.com
 tanvi.agarwal97@example.in,Tanvi Agarwal,1231/hr,PUNE,Active,"mongodb, rest apis, fastapi, web scraping",tanvi.agarwal97@example.in
 karan.bhatia32@mailtest.example.org,Karan Bhatia,403/hr,Noida ,active,"sql, mongodb, selenium, zapier, web scraping, javascript",karan.bhatia32@mailtest.example.org
