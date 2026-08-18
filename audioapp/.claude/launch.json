@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "audioapp",
+      "runtimeExecutable": "C:\\Users\\sloth\\Downloads\\consultbae\\venv\\Scripts\\streamlit.exe",
+      "runtimeArgs": ["run", "C:\\Users\\sloth\\Downloads\\consultbae\\audioapp\\app.py", "--server.headless", "true"],
+      "port": 8501
+    }
+  ]
+}
