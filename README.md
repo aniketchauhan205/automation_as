@@ -8,6 +8,7 @@
 5. [Stuck Log](#stuck-log)
 6. [Architecture](#architecture)
 7. [Usage](#usage)
+8. [Task 2: n8n Automation](#task-2-n8n-automation-csv-duplicate-detection)
 
 ---
 
@@ -129,12 +130,21 @@ python app.py
 
 1. Start n8n in Docker:
    ```bash
-   docker run -it -p 5678:5678 n8n
+   docker run -d --name n8n -p 5678:5678 -v n8n_data:/home/node/.n8n n8nio/n8n:latest
    ```
+   
+   This command:
+   - `-d`: Run as daemon (background)
+   - `--name n8n`: Name the container
+   - `-p 5678:5678`: Map port 5678 (n8n UI)
+   - `-v n8n_data:/home/node/.n8n`: Persist workflows in named volume
+   - `n8nio/n8n:latest`: Use official n8n image
 
-2. Import the workflow: `n8n workflow/Duplicate detection.json`
+2. Access n8n UI: `http://localhost:5678`
 
-3. Configure the Convex API endpoint for database access
+3. Import the workflow: `n8n workflow/Duplicate detection.json`
+
+4. Configure the Convex API endpoint (pre-configured in workflow)
 
 ---
 
@@ -406,6 +416,110 @@ python src/create_view.py
 ### Use the Audio App
 ```bash
 cd audioapp
-python app.py
-# Access at http://localhost:5000
+pip install -r requirements.txt
+streamlit run app.py
+# Access at http://localhost:8501
 ```
+
+**Features:**
+- Two-tab interface: 📝 Submit Audio + 🎵 View Recordings
+- Record or upload audio with automatic quality analysis
+- View all submissions with playable audio and metrics
+- Automatic person linking via phone number
+
+---
+
+## 8. Task 2: n8n Automation (CSV Duplicate Detection)
+
+### Workflow Overview
+
+The n8n automation implements: **CSV Input → Database Check → Duplicate Detection → Email Alert**
+
+**What it does:**
+1. Reads a test CSV file from the local filesystem
+2. Normalizes the data (name, email, phone)
+3. Queries the Convex backend (cloud copy of master persons table)
+4. Matches incoming records against database using matching rules
+5. Classifies each record as: **DUPLICATE**, **WARNING**, or **NEW**
+6. Sends email alerts for DUPLICATE and WARNING records
+
+### Matching Logic
+
+The workflow uses the following rules to classify incoming records:
+
+| Match Type | Fields Matched | Action |
+|-----------|----------------|--------|
+| **Email** | Email only | DUPLICATE |
+| **Email + Phone** | Email AND Phone match | DUPLICATE |
+| **Name + Email** | Name AND Email match | DUPLICATE |
+| **Name + Phone** | Name AND Phone match | DUPLICATE |
+| **Name + Email + Phone** | All three fields match | DUPLICATE |
+| **Name only** | Name matches only | WARNING |
+| **Phone only** | Phone matches only | WARNING |
+| **No match** | None of the above | NEW |
+
+**Key design decision:** Email is treated as a strong unique identifier. If email matches, it's classified as DUPLICATE regardless of name mismatch.
+
+### Test CSV
+
+**Location:** `data/incoming/test.csv`
+
+**Example data:**
+```
+Full name,Email,Phone
+Tanvi Gupta,tanvi.gupta31@example.com,9000000254
+John Doe,john.doe@example.com,9000000999
+```
+
+### n8n Workflow Architecture
+
+**Nodes:**
+1. **Manual Trigger** - Start the workflow
+2. **Read/Write Files from Disk** - Load test.csv
+3. **Extract from File** - Parse CSV into JSON rows
+4. **Code Node 1 (Normalize)** - Extract fields: name, email, phone
+5. **HTTP Request** - Query Convex backend
+6. **Merge** - Combine original data with Convex response
+7. **Code Node 2 (Match Logic)** - Apply matching rules
+8. **Switch / If Routing** - Conditional logic for alerts
+9. **Gmail Nodes** - Send email notifications
+
+### Convex Backend Integration
+
+**Why Convex?**
+- Local SQLite database runs on Windows host
+- n8n runs inside Docker container (Linux)
+- Convex provides HTTP-accessible copy of master persons table
+
+**Convex Details:**
+- **URL:** https://adept-akita-540.convex.cloud
+- **Function:** `people:findMatches`
+- **Input:** name, email, phone
+- **Output:** Array of matching person records
+
+### Running the Workflow
+
+1. **Start n8n in Docker:**
+   ```bash
+   docker run -d --name n8n -p 5678:5678 -v n8n_data:/home/node/.n8n n8nio/n8n:latest
+   ```
+
+2. **Access n8n UI:** `http://localhost:5678`
+
+3. **Import workflow:** `n8n workflow/Duplicate detection.json`
+
+4. **Execute workflow:** Click "Execute Workflow" button
+
+### Final Results
+
+**Task 1:**
+- 101 total source records
+- 60 unique persons identified
+- 15 persons in all 3 sources
+
+**Task 2:**
+- ✅ CSV ingestion from filesystem
+- ✅ Real-time database matching via Convex API
+- ✅ 3-tier classification (DUPLICATE/WARNING/NEW)
+- ✅ Email alerting for matches
+- ✅ Workflow exported as JSON
