@@ -1,0 +1,359 @@
+{
+  "name": "Duplicate detection",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -128,
+        -32
+      ],
+      "id": "74c5066e-7fff-49b4-a060-3dc92cf5e0e6",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "fileSelector": "/files/consultbae/data/incoming/test.csv",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        96,
+        -32
+      ],
+      "id": "d83d1950-2196-4efe-a151-40ff94213c4e",
+      "name": "Read/Write Files from Disk"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        320,
+        -32
+      ],
+      "id": "a995d0b3-3d0a-4538-bd84-8d5f697993c5",
+      "name": "Extract from File"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://adept-akita-540.convex.cloud/api/query",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{\n  {\n    path: \"people:findMatches\",\n    args: {\n      name: $json.name,\n      email: $json.email,\n      phone: $json.phone\n    },\n    format: \"json\"\n  }\n}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        704,
+        144
+      ],
+      "id": "4ad7edcb-c04d-4405-ad1c-71901c9aa31e",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "jsCode": "return items.map(item => ({\n  json: {\n    original: item.json,\n    name: item.json['Fulll name'],\n    email: item.json['Email'],\n    phone: item.json['Phone'],\n  }\n}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        544,
+        -32
+      ],
+      "id": "2e52c3a9-f8b7-44e0-b166-d6e741663bc1",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const incomingName = String($json.name || \"\").trim().toLowerCase();\nconst incomingEmail = String($json.email || \"\").trim().toLowerCase();\nconst incomingPhone = String($json.phone || \"\").replace(/\\D/g, \"\");\n\nconst matches = Array.isArray($json.value) ? $json.value : [];\n\nif (matches.length === 0) {\n  return {\n    json: {\n      name: $json.name,\n      email: $json.email,\n      phone: $json.phone,\n\n      matched_person_id: null,\n      matched_name: null,\n      matched_email: null,\n      matched_phone: null,\n\n      name_match: false,\n      email_match: false,\n      phone_match: false,\n      match_count: 0,\n\n      status: \"NEW\",\n      match_type: \"NO MATCH\"\n    }\n  };\n}\n\nconst matched = matches[0];\n\nconst matchedName = String(matched.name || \"\").trim().toLowerCase();\nconst matchedEmail = String(matched.email || \"\").trim().toLowerCase();\nconst matchedPhone = String(matched.phone || \"\").replace(/\\D/g, \"\");\n\nconst nameMatch = incomingName === matchedName;\nconst emailMatch = incomingEmail === matchedEmail;\nconst phoneMatch = incomingPhone === matchedPhone;\n\nconst matchCount =\n  Number(nameMatch) +\n  Number(emailMatch) +\n  Number(phoneMatch);\n\nlet status;\n\nif ((nameMatch && emailMatch) || (nameMatch && phoneMatch)) {\n  status = \"DUPLICATE\";\n} else if (matchCount >= 1) {\n  status = \"WARNING\";\n} else {\n  status = \"NEW\";\n}\n\nlet matchType;\n\nif (matchCount === 0) {\n  matchType = \"NO MATCH\";\n} else if (nameMatch && emailMatch && phoneMatch) {\n  matchType = \"NAME + EMAIL + PHONE\";\n} else if (nameMatch && emailMatch) {\n  matchType = \"NAME + EMAIL\";\n} else if (nameMatch && phoneMatch) {\n  matchType = \"NAME + PHONE\";\n} else if (emailMatch && phoneMatch) {\n  matchType = \"EMAIL + PHONE\";\n} else if (nameMatch) {\n  matchType = \"NAME ONLY\";\n} else if (emailMatch) {\n  matchType = \"EMAIL ONLY\";\n} else {\n  matchType = \"PHONE ONLY\";\n}\n\nreturn {\n  json: {\n    name: $json.name,\n    email: $json.email,\n    phone: $json.phone,\n\n    matched_person_id: matched.person_id,\n    matched_name: matched.name,\n    matched_email: matched.email,\n    matched_phone: matched.phone,\n\n    name_match: nameMatch,\n    email_match: emailMatch,\n    phone_match: phoneMatch,\n    match_count: matchCount,\n\n    status,\n    match_type: matchType\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        -32
+      ],
+      "id": "f6431f91-82a1-42dd-8917-d6b2658502fe",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        880,
+        -16
+      ],
+      "id": "a0b1f16a-5764-4c73-b84d-5e5531df5084",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.status }}",
+                    "rightValue": "DUPLICATE",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "463b3751-37ca-4422-86b0-df45f3278ec2"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "duplicate"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "4e224dad-d6c2-45fe-ba4c-2c40aaaafeff",
+                    "leftValue": "={{ $json.status }}",
+                    "rightValue": "WARNING",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "warning"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "d919f472-9807-44ed-91c3-2657926bd0a8",
+                    "leftValue": "={{ $json.status }}",
+                    "rightValue": "NEW",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "new"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        1408,
+        -48
+      ],
+      "id": "330ee1fb-00de-4c3f-8b66-670960252138",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "sendTo": "aniket.chauhan.bain@gmail.com",
+        "subject": "DUPLICATE DETECTED",
+        "emailType": "text",
+        "message": "=CONSULTBAE DUPLICATE ALERT  Duplicate person detected.  INCOMING RECORD Name: {{$json.name}} Email: {{$json.email}} Phone: {{$json.phone}}  MATCHED DATABASE RECORD Person ID: {{$json.matched_person_id}} Name: {{$json.matched_name}} Email: {{$json.matched_email}} Phone: {{$json.matched_phone}}  MATCH TYPE: {{$json.match_type}} STATUS: {{$json.status}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1632,
+        -160
+      ],
+      "id": "3909734a-96da-4ce0-adf9-bbe428622bd0",
+      "name": "Send a message",
+      "webhookId": "9e9cb13e-f32b-4eb4-9e34-df42a954d7e9",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "UtK3yBVc22EZL3vu",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "aniket.chauhan.bain@gmail.com",
+        "subject": "ConsultBae Warning - Possible Duplicate - {{$json.name}}",
+        "emailType": "text",
+        "message": "=CONSULTBAE WARNING\n\nA possible duplicate or conflicting person record has been detected.\n\nINCOMING RECORD\nName: {{$json.name}}\nEmail: {{$json.email}}\nPhone: {{$json.phone}}\n\nMATCHED DATABASE RECORD\nPerson ID: {{$json.matched_person_id}}\nName: {{$json.matched_name}}\nEmail: {{$json.matched_email}}\nPhone: {{$json.matched_phone}}\n\nMATCH TYPE: {{$json.match_type}}\n\nSTATUS: WARNING\n\nAction: Please review the incoming record manually.",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1680,
+        -32
+      ],
+      "id": "185c1b99-f2e0-4637-adde-bc4f3e03ec0f",
+      "name": "Send a message1",
+      "webhookId": "9e9cb13e-f32b-4eb4-9e34-df42a954d7e9",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "UtK3yBVc22EZL3vu",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Read/Write Files from Disk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read/Write Files from Disk": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send a message1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "8b92f761-d19f-4adf-9acc-0e2f2cc7d189",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "3d606b79a499850b8b0cb08b739a85d91905af7d177333db2546f0d0aa1247d2"
+  },
+  "nodeGroups": [],
+  "id": "JVvt2GPQHRm9eWnd",
+  "tags": []
+}
