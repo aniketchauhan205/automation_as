@@ -117,7 +117,7 @@ consultbae/
    python src/check_db.py
    ```
 
-### Optional: Audio App Setup
+### Audio App Setup
 
 If using the audio application:
 ```bash
@@ -126,7 +126,7 @@ pip install -r requirements.txt
 python app.py
 ```
 
-### Optional: n8n Workflow Setup
+### n8n Workflow Setup
 
 1. Start n8n in Docker:
    ```bash
@@ -304,35 +304,22 @@ Had to learn n8n from scratch to automate the duplicate detection workflow. n8n 
 
 ---
 
-### Challenge 3: n8n + Docker + SQLite Database Access (Solved with Convex)
+### Challenge 3: Connecting n8n to the SQLite database
 
-**The Problem:**
-n8n runs inside a Docker container, but the SQLite database (`people.db`) exists on the Windows host machine. There were three challenges:
+The Problem: n8n was running inside a Docker container while my SQLite database was stored on the Windows host. Although Docker can mount files from the host, making the existing SQLite database cleanly accessible from the n8n workflow required additional Docker path and database-access configuration.
 
-1. **Path Mounting:** The Windows path (`C:\Users\sloth\Downloads\consultbae\database\people.db`) is not valid inside the Linux Docker container. Would need to mount the Windows directory to a container path (e.g., `/files/consultbae/database/people.db`).
+What I Searched:
 
-2. **n8n SQLite Support:** n8n doesn't have a native SQLite database node. The platform excels at HTTP requests and data transformation, not direct file system database queries.
+"n8n SQLite Docker Windows access"
+"n8n local SQLite database in Docker"
 
-3. **Complexity:** Even with proper mounting, accessing SQLite from n8n would require:
-   - Configuring Docker volume mounts correctly
-   - Handling file permissions between Windows and Linux
-   - Writing custom SQL or finding a workaround node
+What I Asked AI:
 
-**What I Searched:**
-- "n8n SQLite database integration"
-- "Docker mount Windows folder to Linux path"
-- "n8n local database access"
-- "SQLite ODBC driver for n8n"
+"How can n8n running in Docker access my Windows SQLite database?"
+"Can n8n read a local SQLite file?"
 
-**What I Asked AI:**
-- "How do I access a SQLite database from n8n running in Docker?"
-- "What's the correct Docker volume mount syntax for Windows paths?"
-- "Are there alternatives to SQLite that n8n can access more easily?"
-
-**Suggestions I Rejected & Why:**
-- Mounting SQLite via Docker volumes: rejected because of complexity and potential permission issues between Windows and Linux filesystems
-- Creating a separate REST API for the database: rejected because it added unnecessary layers and time constraints
-- Using ODBC drivers: rejected because setup would be fragile and environment-dependent
+What I Rejected:
+I decided not to modify the working Task 1 database setup just to make it accessible to n8n.
 
 **How I Got Unstuck:**
 - Decided to move the `persons` table to **Convex**, a serverless backend platform
